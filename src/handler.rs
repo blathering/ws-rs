@@ -43,6 +43,12 @@ pub trait Handler {
         Ok(())
     }
 
+    #[cfg(feature = "binary-on-message")]
+    fn on_message_binary(&mut self, buf: Vec<u8>) -> Result<()> {
+        debug!("Received message (non-stringified) {:?}", buf);
+        Ok(())
+    }
+
     /// Called any time this endpoint receives a close control frame.
     /// This may be because the other endpoint is initiating a closing handshake,
     /// or it may be the other endpoint confirming the handshake initiated by this endpoint.

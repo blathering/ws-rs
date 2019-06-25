@@ -757,9 +757,17 @@ where
                             if !self.fragments.is_empty() {
                                 return Err(Error::new(Kind::Protocol, "Received unfragmented text frame while processing fragmented message."));
                             }
-                            let msg = Message::text(String::from_utf8(frame.into_data())
-                                .map_err(|err| err.utf8_error())?);
-                            self.handler.on_message(msg)?;
+                            #[cfg(feature = "binary-on-message")]
+                            {
+                                self.handler.on_message_binary(frame.into_data())?;
+                            }
+
+                            #[cfg(not(feature = "binary-on-message"))]
+                            {
+                                let msg = Message::text(String::from_utf8(frame.into_data())
+                                    .map_err(|err| err.utf8_error())?);
+                                self.handler.on_message(msg)?;
+                            }
                         }
                         OpCode::Binary => {
                             trace!("Received binary frame {:?}", frame);
@@ -904,14 +912,22 @@ where
                                         }
                                         data.extend(frame.into_data());
 
-                                        let string = String::from_utf8(data)
-                                            .map_err(|err| err.utf8_error())?;
+                                        #[cfg(feature = "binary-on-message")]
+                                        {
+                                            self.handler.on_message_binary(data)?;
+                                        }
 
-                                        trace!(
-                                            "Calling handler with constructed message: {:?}",
-                                            string
-                                        );
-                                        self.handler.on_message(Message::text(string))?;
+                                        #[cfg(not(feature = "binary-on-message"))]
+                                        {
+                                            let string = String::from_utf8(data)
+                                                .map_err(|err| err.utf8_error())?;
+
+                                            trace!(
+                                                "Calling handler with constructed message: {:?}",
+                                                string
+                                            );
+                                            self.handler.on_message(Message::text(string))?;
+                                        }
                                     }
                                     OpCode::Binary => {
                                         trace!("Constructing binary message from fragments: {:?} -> {:?} -> {:?}", first, self.fragments.iter().collect::<Vec<&Frame>>(), frame);
