@@ -50,7 +50,7 @@ term = "0.5.1"
 time = "0.1.39"
 
 [features]
-default = []
+default = ["keep-client-open"]
 permessage-deflate = [
     "libz-sys",
     "libc",
@@ -58,3 +58,4 @@ permessage-deflate = [
 ssl = ["openssl"]
 nativetls = ["native-tls"]
 binary-on-message = []
+keep-client-open = []

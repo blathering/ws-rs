@@ -589,7 +589,7 @@ where
         if self.connections.is_empty() {
             if !self.state.is_active() {
                 debug!("Shutting down websocket server.");
-            } else if self.is_client() {
+            } else if cfg!(not(feature = "keep-client-open")) && self.is_client() {
                 debug!("Shutting down websocket client.");
                 self.factory.on_shutdown();
                 self.state = State::Inactive;
