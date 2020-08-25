@@ -70,9 +70,21 @@ impl<T: io::Write> TryWriteBuf for T {}
 
 use self::Stream::*;
 pub enum Stream {
+    Empty,
     Tcp(TcpStream),
     #[cfg(any(feature = "ssl", feature = "nativetls"))]
     Tls(TlsStream),
+}
+
+impl Stream {
+    pub fn into_tcp_stream(self) -> TcpStream {
+        match self {
+            Empty => unreachable!(),
+            Tcp(sock) => sock,
+            #[cfg(any(feature = "ssl", feature = "nativetls"))]
+            Tls(_inner) => unreachable!(),
+        }
+    }
 }
 
 impl Stream {
@@ -106,11 +118,13 @@ impl Stream {
             Tcp(ref sock) => sock,
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(ref inner) => inner.evented(),
+            Empty => unreachable!(),
         }
     }
 
     pub fn is_negotiating(&self) -> bool {
         match *self {
+            Empty => unreachable!(),
             Tcp(_) => false,
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(ref inner) => inner.is_negotiating(),
@@ -119,6 +133,7 @@ impl Stream {
 
     pub fn clear_negotiating(&mut self) -> Result<()> {
         match *self {
+            Empty => unreachable!(),
             Tcp(_) => Err(Error::new(
                 Kind::Internal,
                 "Attempted to clear negotiating flag on non ssl connection.",
@@ -130,6 +145,7 @@ impl Stream {
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         match *self {
+            Empty => unreachable!(),
             Tcp(ref sock) => sock.peer_addr(),
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(ref inner) => inner.peer_addr(),
@@ -138,6 +154,7 @@ impl Stream {
 
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         match *self {
+            Empty => unreachable!(),
             Tcp(ref sock) => sock.local_addr(),
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(ref inner) => inner.local_addr(),
@@ -148,6 +165,7 @@ impl Stream {
 impl io::Read for Stream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
+            Empty => unreachable!(),
             Tcp(ref mut sock) => sock.read(buf),
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(TlsStream::Live(ref mut sock)) => sock.read(buf),
@@ -216,6 +234,7 @@ impl io::Read for Stream {
 impl io::Write for Stream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
+            Empty => unreachable!(),
             Tcp(ref mut sock) => sock.write(buf),
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(TlsStream::Live(ref mut sock)) => sock.write(buf),
@@ -284,6 +303,7 @@ impl io::Write for Stream {
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
+            Empty => unreachable!(),
             Tcp(ref mut sock) => sock.flush(),
             #[cfg(any(feature = "ssl", feature = "nativetls"))]
             Tls(TlsStream::Live(ref mut sock)) => sock.flush(),
