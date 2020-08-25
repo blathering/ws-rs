@@ -108,6 +108,7 @@ impl Stream {
     #[cfg(any(feature = "ssl", feature = "nativetls"))]
     pub fn is_tls(&self) -> bool {
         match *self {
+            Empty => false,
             Tcp(_) => false,
             Tls(_) => true,
         }

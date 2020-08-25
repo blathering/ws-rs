@@ -147,10 +147,15 @@ where
             ))
         }
     }
+    #[cfg(any(feature = "ssl", feature = "nativetls"))]
+    fn take_tcp_stream(&mut self) -> TcpStream {
+        let socket = std::mem::replace(&mut self.socket, Stream::Empty);
+        socket.into_tcp_stream()
+    }
 
     #[cfg(any(feature = "ssl", feature = "nativetls"))]
     pub fn encrypt(&mut self) -> Result<()> {
-        let sock = self.socket().try_clone()?;
+        let sock = self.take_tcp_stream();
         let ssl_stream = match self.endpoint {
             Server => self.handler.upgrade_ssl_server(sock),
             Client(ref url) => self.handler.upgrade_ssl_client(sock, url),
@@ -598,7 +603,8 @@ where
                         // TODO: see if this can be optimized with drain
                         let end = {
                             let data = res.get_ref();
-                            let end = data.iter()
+                            let end = data
+                                .iter()
                                 .enumerate()
                                 .take_while(|&(ind, _)| !data[..ind].ends_with(b"\r\n\r\n"))
                                 .count();
@@ -764,8 +770,10 @@ where
 
                             #[cfg(not(feature = "binary-on-message"))]
                             {
-                                let msg = Message::text(String::from_utf8(frame.into_data())
-                                    .map_err(|err| err.utf8_error())?);
+                                let msg = Message::text(
+                                    String::from_utf8(frame.into_data())
+                                        .map_err(|err| err.utf8_error())?,
+                                );
                                 self.handler.on_message(msg)?;
                             }
                         }
@@ -1043,7 +1051,8 @@ where
         trace!("Message opcode {:?}", opcode);
         let data = msg.into_data();
 
-        if let Some(frame) = self.handler
+        if let Some(frame) = self
+            .handler
             .on_send_frame(Frame::message(data, opcode, true))?
         {
             if frame.payload().len() > self.settings.fragment_size {
@@ -1161,7 +1170,8 @@ where
             self.peer_addr()
         );
 
-        if let Some(frame) = self.handler
+        if let Some(frame) = self
+            .handler
             .on_send_frame(Frame::close(code, reason.borrow()))?
         {
             self.buffer_frame(frame)?;
